@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -72,7 +71,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 		// print access log.
 		method := r.Method
 		path := r.URL.Path
-		fmt.Printf("[%s] %s\n", method, path)
+		log.Printf("[%s] %s\n", method, path)
 
 		m := validPath.FindStringSubmatch(r.URL.Path)
 		if m == nil {
@@ -88,6 +87,6 @@ func main() {
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
 
-	fmt.Println("[START] listen http://localhost:8080")
+	log.Println("[START] listen http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
