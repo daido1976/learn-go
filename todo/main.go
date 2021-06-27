@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -17,7 +18,7 @@ func check(e error) {
 	}
 }
 
-const FILENAME = "todo.json"
+const TODO_FILE_NAME = "todo.json"
 
 type Todo struct {
 	ID    int    `json:"id"`
@@ -31,7 +32,6 @@ type ParamTodo struct {
 }
 
 func (t *Todo) retrive(id int) (Todo, error) {
-	// fetch current todos
 	todos := fetchCurrentTodos()
 
 	// retrive by given id
@@ -67,32 +67,19 @@ func todoHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET /todos
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadFile(FILENAME)
+	body, err := ioutil.ReadFile(TODO_FILE_NAME)
 	check(err)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(body)
-
-	// 以下でも同じ結果になる（一度 Go の Struct にデコード = Unmarshal してから、JSON にエンコード = Marshal し直して返す）
-	// var todos []Todo
-	// f, err := os.Open(FILENAME)
-	// check(err)
-	// dec := json.NewDecoder(f)
-	// dec.Decode(&todos)
-
-	// w.Header().Set("Content-Type", "application/json")
-	// enc := json.NewEncoder(w)
-	// enc.Encode(todos)
 }
 
 // GET /todos/1
 func handleShow(w http.ResponseWriter, r *http.Request) {
-	// extract params id
-	id, err := strconv.Atoi(path.Base(r.URL.Path))
-	check(err)
+	id := extractIdFrom(r.URL)
 
 	// retrive todo by id
 	var todo Todo
-	todo, err = todo.retrive(id)
+	todo, err := todo.retrive(id)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -108,7 +95,6 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.Decode(&paramT)
 
-	// fetch current todos
 	todos := fetchCurrentTodos()
 
 	// build newTodos
@@ -131,11 +117,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.Decode(&paramT)
 
-	// extract params id
-	id, err := strconv.Atoi(path.Base(r.URL.Path))
-	check(err)
-
-	// fetch current todos
+	id := extractIdFrom(r.URL)
 	todos := fetchCurrentTodos()
 
 	// update todos
@@ -156,11 +138,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /todos/1
 func handleDelete(w http.ResponseWriter, r *http.Request) {
-	// extract params id
-	id, err := strconv.Atoi(path.Base(r.URL.Path))
-	check(err)
-
-	// fetch current todos
+	id := extractIdFrom(r.URL)
 	todos := fetchCurrentTodos()
 
 	// delete todo
@@ -175,10 +153,17 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
+// extract params id
+func extractIdFrom(url *url.URL) int {
+	id, err := strconv.Atoi(path.Base(url.Path))
+	check(err)
+	return id
+}
+
 // fetch current todos from json file
 func fetchCurrentTodos() []Todo {
 	var todos []Todo
-	f, err := os.Open(FILENAME)
+	f, err := os.Open(TODO_FILE_NAME)
 	check(err)
 	dec := json.NewDecoder(f)
 	dec.Decode(&todos)
@@ -187,7 +172,7 @@ func fetchCurrentTodos() []Todo {
 
 // persist by writing todos to json file
 func persist(todos []Todo) {
-	f, err := os.Create(FILENAME)
+	f, err := os.Create(TODO_FILE_NAME)
 	check(err)
 	enc := json.NewEncoder(f)
 	enc.Encode(todos)
