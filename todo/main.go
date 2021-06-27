@@ -25,6 +25,11 @@ type Todo struct {
 	Body  string `json:"body"`
 }
 
+type ParamTodo struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+
 func (t *Todo) retrive(id int) (Todo, error) {
 	// read json file
 	var todos []Todo
@@ -81,16 +86,16 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	// w.Header().Set("Content-Type", "application/json")
 	// enc := json.NewEncoder(w)
-	// enc.SetIndent("", "  ")
 	// enc.Encode(todos)
 }
 
 // GET /todos/1
 func handleShow(w http.ResponseWriter, r *http.Request) {
-	// retrive todo by id
-	var todo Todo
 	id, err := strconv.Atoi(path.Base(r.URL.Path))
 	check(err)
+
+	// retrive todo by id
+	var todo Todo
 	todo, err = todo.retrive(id)
 	if err != nil {
 		http.NotFound(w, r)
@@ -100,19 +105,41 @@ func handleShow(w http.ResponseWriter, r *http.Request) {
 	renderJson(w, todo)
 }
 
-// POST /todos/1
+// POST /todos
 func handleCreate(w http.ResponseWriter, r *http.Request) {
-	var todo Todo
+	var paramT ParamTodo
 	dec := json.NewDecoder(r.Body)
-	dec.Decode(&todo)
+	dec.Decode(&paramT)
 
-	renderJson(w, todo)
+	// read json file
+	var todos []Todo
+	f, err := os.Open(FILENAME)
+	check(err)
+	dec = json.NewDecoder(f)
+	dec.Decode(&todos)
+
+	// build newTodos
+	newId := len(todos) + 1
+	newTodo := Todo{
+		ID:    newId,
+		Title: paramT.Title,
+		Body:  paramT.Body,
+	}
+	newTodos := append(todos, newTodo)
+
+	// write newTodos to json file
+	f, err = os.Create(FILENAME)
+	check(err)
+	enc := json.NewEncoder(f)
+	enc.Encode(newTodos)
+	defer f.Close()
+
+	renderJson(w, newTodo)
 }
 
 func renderJson(w http.ResponseWriter, t Todo) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
 	enc.Encode(t)
 }
 
