@@ -31,12 +31,8 @@ type ParamTodo struct {
 }
 
 func (t *Todo) retrive(id int) (Todo, error) {
-	// read json file
-	var todos []Todo
-	f, err := os.Open(FILENAME)
-	check(err)
-	dec := json.NewDecoder(f)
-	dec.Decode(&todos)
+	// fetch current todos
+	todos := fetchCurrentTodos()
 
 	// retrive by given id
 	for _, todo := range todos {
@@ -112,12 +108,8 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.Decode(&paramT)
 
-	// read json file
-	var todos []Todo
-	f, err := os.Open(FILENAME)
-	check(err)
-	dec = json.NewDecoder(f)
-	dec.Decode(&todos)
+	// fetch current todos
+	todos := fetchCurrentTodos()
 
 	// build newTodos
 	newId := len(todos) + 1
@@ -128,13 +120,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	newTodos := append(todos, newTodo)
 
-	// write newTodos to json file
-	f, err = os.Create(FILENAME)
-	check(err)
-	enc := json.NewEncoder(f)
-	enc.Encode(newTodos)
-	defer f.Close()
-
+	persist(newTodos)
 	renderJson(w, newTodo)
 }
 
@@ -149,12 +135,8 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(path.Base(r.URL.Path))
 	check(err)
 
-	// read json file
-	var todos []Todo
-	f, err := os.Open(FILENAME)
-	check(err)
-	dec = json.NewDecoder(f)
-	dec.Decode(&todos)
+	// fetch current todos
+	todos := fetchCurrentTodos()
 
 	// update todos
 	var newTodos []Todo
@@ -168,13 +150,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 		newTodos = append(newTodos, todo)
 	}
 
-	// write newTodos to json file
-	f, err = os.Create(FILENAME)
-	check(err)
-	enc := json.NewEncoder(f)
-	enc.Encode(newTodos)
-	defer f.Close()
-
+	persist(newTodos)
 	renderJson(w, newTodo)
 }
 
@@ -184,12 +160,8 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(path.Base(r.URL.Path))
 	check(err)
 
-	// read json file
-	var todos []Todo
-	f, err := os.Open(FILENAME)
-	check(err)
-	dec := json.NewDecoder(f)
-	dec.Decode(&todos)
+	// fetch current todos
+	todos := fetchCurrentTodos()
 
 	// delete todo
 	var newTodos []Todo
@@ -199,16 +171,30 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// write newTodos to json file
-	f, err = os.Create(FILENAME)
-	check(err)
-	enc := json.NewEncoder(f)
-	enc.Encode(newTodos)
-	defer f.Close()
-
+	persist(newTodos)
 	w.WriteHeader(200)
 }
 
+// fetch current todos from json file
+func fetchCurrentTodos() []Todo {
+	var todos []Todo
+	f, err := os.Open(FILENAME)
+	check(err)
+	dec := json.NewDecoder(f)
+	dec.Decode(&todos)
+	return todos
+}
+
+// persist by writing todos to json file
+func persist(todos []Todo) {
+	f, err := os.Create(FILENAME)
+	check(err)
+	enc := json.NewEncoder(f)
+	enc.Encode(todos)
+	defer f.Close()
+}
+
+// render json as http response
 func renderJson(w http.ResponseWriter, t Todo) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
