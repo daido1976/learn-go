@@ -57,16 +57,15 @@ func todoHandler(w http.ResponseWriter, r *http.Request) {
 		handleIndex(w, r)
 		return
 	}
-
 	switch m {
 	case "GET":
 		handleShow(w, r)
 	case "POST":
 		handleCreate(w, r)
-		// case "PUT":
-		// 	err = handlePut(w, r)
-		// case "DELETE":
-		// 	err = handleDelete(w, r)
+	case "PUT":
+		handleUpdate(w, r)
+	case "DELETE":
+		handleDelete(w, r)
 	}
 }
 
@@ -91,6 +90,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 // GET /todos/1
 func handleShow(w http.ResponseWriter, r *http.Request) {
+	// extract params id
 	id, err := strconv.Atoi(path.Base(r.URL.Path))
 	check(err)
 
@@ -107,6 +107,7 @@ func handleShow(w http.ResponseWriter, r *http.Request) {
 
 // POST /todos
 func handleCreate(w http.ResponseWriter, r *http.Request) {
+	// decode params json to ParamTodo struct
 	var paramT ParamTodo
 	dec := json.NewDecoder(r.Body)
 	dec.Decode(&paramT)
@@ -135,6 +136,40 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 
 	renderJson(w, newTodo)
+}
+
+// PUT /todos/1
+func handleUpdate(w http.ResponseWriter, r *http.Request) {}
+
+// DELETE /todos/1
+func handleDelete(w http.ResponseWriter, r *http.Request) {
+	// extract params id
+	id, err := strconv.Atoi(path.Base(r.URL.Path))
+	check(err)
+
+	// read json file
+	var todos []Todo
+	f, err := os.Open(FILENAME)
+	check(err)
+	dec := json.NewDecoder(f)
+	dec.Decode(&todos)
+
+	// delete todo
+	var newTodos []Todo
+	for _, todo := range todos {
+		if todo.ID != id {
+			newTodos = append(newTodos, todo)
+		}
+	}
+
+	// write newTodos to json file
+	f, err = os.Create(FILENAME)
+	check(err)
+	enc := json.NewEncoder(f)
+	enc.Encode(newTodos)
+	defer f.Close()
+
+	w.WriteHeader(200)
 }
 
 func renderJson(w http.ResponseWriter, t Todo) {
