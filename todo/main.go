@@ -139,7 +139,44 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /todos/1
-func handleUpdate(w http.ResponseWriter, r *http.Request) {}
+func handleUpdate(w http.ResponseWriter, r *http.Request) {
+	// decode params json to ParamTodo struct
+	var paramT ParamTodo
+	dec := json.NewDecoder(r.Body)
+	dec.Decode(&paramT)
+
+	// extract params id
+	id, err := strconv.Atoi(path.Base(r.URL.Path))
+	check(err)
+
+	// read json file
+	var todos []Todo
+	f, err := os.Open(FILENAME)
+	check(err)
+	dec = json.NewDecoder(f)
+	dec.Decode(&todos)
+
+	// update todos
+	var newTodos []Todo
+	var newTodo Todo
+	for _, todo := range todos {
+		if todo.ID == id {
+			todo.Title = paramT.Title
+			todo.Body = paramT.Body
+			newTodo = todo
+		}
+		newTodos = append(newTodos, todo)
+	}
+
+	// write newTodos to json file
+	f, err = os.Create(FILENAME)
+	check(err)
+	enc := json.NewEncoder(f)
+	enc.Encode(newTodos)
+	defer f.Close()
+
+	renderJson(w, newTodo)
+}
 
 // DELETE /todos/1
 func handleDelete(w http.ResponseWriter, r *http.Request) {
