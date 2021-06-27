@@ -75,11 +75,11 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 // GET /todos/1
 func handleShow(w http.ResponseWriter, r *http.Request) {
-	id := extractIdFrom(r.URL)
+	paramId := extractIdFrom(r.URL)
 
 	// retrive todo by id
 	var todo Todo
-	todo, err := todo.retrive(id)
+	todo, err := todo.retrive(paramId)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -90,19 +90,15 @@ func handleShow(w http.ResponseWriter, r *http.Request) {
 
 // POST /todos
 func handleCreate(w http.ResponseWriter, r *http.Request) {
-	// decode params json to ParamTodo struct
-	var paramT ParamTodo
-	dec := json.NewDecoder(r.Body)
-	dec.Decode(&paramT)
-
+	paramTodo := decodeToParamTodo(r)
 	todos := fetchCurrentTodos()
 
 	// build newTodos
 	newId := len(todos) + 1
 	newTodo := Todo{
 		ID:    newId,
-		Title: paramT.Title,
-		Body:  paramT.Body,
+		Title: paramTodo.Title,
+		Body:  paramTodo.Body,
 	}
 	newTodos := append(todos, newTodo)
 
@@ -112,21 +108,17 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 
 // PUT /todos/1
 func handleUpdate(w http.ResponseWriter, r *http.Request) {
-	// decode params json to ParamTodo struct
-	var paramT ParamTodo
-	dec := json.NewDecoder(r.Body)
-	dec.Decode(&paramT)
-
-	id := extractIdFrom(r.URL)
+	paramTodo := decodeToParamTodo(r)
+	paramId := extractIdFrom(r.URL)
 	todos := fetchCurrentTodos()
 
 	// update todos
 	var newTodos []Todo
 	var newTodo Todo
 	for _, todo := range todos {
-		if todo.ID == id {
-			todo.Title = paramT.Title
-			todo.Body = paramT.Body
+		if todo.ID == paramId {
+			todo.Title = paramTodo.Title
+			todo.Body = paramTodo.Body
 			newTodo = todo
 		}
 		newTodos = append(newTodos, todo)
@@ -138,19 +130,27 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /todos/1
 func handleDelete(w http.ResponseWriter, r *http.Request) {
-	id := extractIdFrom(r.URL)
+	paramId := extractIdFrom(r.URL)
 	todos := fetchCurrentTodos()
 
 	// delete todo
 	var newTodos []Todo
 	for _, todo := range todos {
-		if todo.ID != id {
+		if todo.ID != paramId {
 			newTodos = append(newTodos, todo)
 		}
 	}
 
 	persist(newTodos)
 	w.WriteHeader(200)
+}
+
+// decode params json to ParamTodo struct
+func decodeToParamTodo(r *http.Request) ParamTodo {
+	var paramT ParamTodo
+	dec := json.NewDecoder(r.Body)
+	dec.Decode(&paramT)
+	return paramT
 }
 
 // extract params id
