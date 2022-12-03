@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,7 +18,8 @@ func check(e error) {
 	}
 }
 
-const TODO_FILE_NAME = "todo.json"
+const TODO_DIR_NAME = "tmp"
+const TODO_FILE_NAME = TODO_DIR_NAME + "/todo.json"
 
 type Todo struct {
 	ID    int    `json:"id"`
@@ -67,7 +68,7 @@ func todoHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET /todos
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadFile(TODO_FILE_NAME)
+	body, err := os.ReadFile(TODO_FILE_NAME)
 	check(err)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(body)
@@ -186,10 +187,26 @@ func renderJson(w http.ResponseWriter, t Todo) {
 	enc.Encode(t)
 }
 
+func initDb() {
+	err := os.MkdirAll(TODO_DIR_NAME, os.ModePerm)
+	check(err)
+	if _, err := os.Stat(TODO_FILE_NAME); err == nil {
+		fmt.Println("db is ready!")
+	} else {
+		f, err := os.Create(TODO_FILE_NAME)
+		check(err)
+		data := []byte("[]")
+		f.Write(data)
+		fmt.Println("init db and db is ready!")
+		defer f.Close()
+	}
+}
+
 func main() {
 	http.HandleFunc("/todos", handleIndex)
 	http.HandleFunc("/todos/", todoHandler)
 
+	initDb()
 	log.Println("[START] listen http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe("localhost:8080", nil))
 }
